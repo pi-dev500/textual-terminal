@@ -425,7 +425,8 @@ class TerminalEmulator:
         if self.pid == 0:
             argv = shlex.split(command)
             # OPTIMIZE: do not use a fixed LC_ALL
-            env = dict(TERM="xterm", LC_ALL="en_US.UTF-8", HOME=str(Path.home()))
+            env = dict(os.environ)
+            env["TERM"]="xterm"
             os.execvpe(argv[0], argv, env)
 
         return fd
