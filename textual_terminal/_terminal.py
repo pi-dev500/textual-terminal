@@ -79,10 +79,11 @@ class Terminal(Widget, can_focus=True):
         name: str | None = None,
         id: str | None = None,
         classes: str | None = None,
+        env_overide: dict | None = None
     ) -> None:
         self.command = command
         self.default_colors = default_colors
-
+        self.env_overide=env_overide
         if default_colors == "textual":
             self.textual_colors = self.detect_textual_colors()
 
@@ -140,7 +141,7 @@ class Terminal(Widget, can_focus=True):
         if self.emulator is not None:
             return
 
-        self.emulator = TerminalEmulator(command=self.command)
+        self.emulator = TerminalEmulator(command=self.command, env_overide=self.env_overide)
         self.emulator.start()
         self.send_queue = self.emulator.recv_queue
         self.recv_queue = self.emulator.send_queue
@@ -384,7 +385,7 @@ class Terminal(Widget, can_focus=True):
 
 
 class TerminalEmulator:
-    def __init__(self, command: str):
+    def __init__(self, command: str, env_overide: dict | None = None):
         # FIXME: fix ResourceWarning (manually close the fd / p_out broke (blocking)
         """
         The following error happens on self.fd, when stopping the emulator with stop():
@@ -397,6 +398,7 @@ class TerminalEmulator:
 
         It maybe has to be implemented somewhere at the CancelledError.
         """
+        self.env_overide=env_overide
         self.ncol = 80
         self.nrow = 24
         self.data_or_disconnect = None
@@ -425,7 +427,11 @@ class TerminalEmulator:
         if self.pid == 0:
             argv = shlex.split(command)
             # OPTIMIZE: do not use a fixed LC_ALL
-            env = dict(TERM="xterm", LC_ALL="en_US.UTF-8", HOME=str(Path.home()))
+            env = dict(os.environ)
+            env["TERM"]="xterm"
+            if self.env_overide!=None:
+                for key,value in self.env_overide.items():
+                    env[key]=value
             os.execvpe(argv[0], argv, env)
 
         return fd
